@@ -1,0 +1,36 @@
+**local minima — how bad are they really?** This is one of the most fascinating conceptual topics in deep learning.
+
+---
+
+## Image 1 — Local vs. Global Minima
+
+The error landscape has multiple valleys. A **bad local minimum** (red dot) is one where the model gets stuck at a poor solution. But there are also **equally good distinct minima** (blue dots) — different weight configurations that all achieve similar low error. This is the key insight.
+
+---
+
+## Image 2 — But Does It Matter?
+
+Two competing explanations for why deep learning works despite local minima:
+
+**Theory 1 — Many equally good solutions exist.** There are many local minima that are all approximately as good as the global minimum. This is consistent with the huge diversity of weight configurations that produce similar model performance.
+
+**Theory 2 — Very few true local minima exist in high-D space.** In extremely high-dimensional spaces, the probability that a point is a minimum in *every single dimension simultaneously* becomes vanishingly small.
+
+---
+
+## Image 3 — Saddle Points
+
+In high dimensions, what looks like a local minimum in 1D is usually a **saddle point** — a minimum in one direction but a maximum in another. The 3D surface shows this perfectly: the orange peak is a local min in one direction and a local max in the other.
+
+---
+
+## Image 4 — The Key Insight
+
+**Gradient descent gets trapped in a local minimum only if that point is a minimum in ALL dimensions simultaneously.**
+
+In an extremely high-dimensional space (millions of weights), the chance of this happening is very small. Most apparent "traps" are actually saddle points that GD can escape from, especially with the noise introduced by mini-batch training.
+
+---
+
+## The bottom line
+Local minima in deep learning are mostly **not a practical problem** — either there are many equally good ones, or true local minima barely exist in high-dimensional weight space.
