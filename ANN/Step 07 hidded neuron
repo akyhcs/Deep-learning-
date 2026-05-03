@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>From Perceptron to Deep Network</title>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;1,400&family=IBM+Plex+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080b12;
+    --surface: #0f1420;
+    --border: #1a2035;
+    --text: #dce4f5;
+    --dim: #3d4a6a;
+    --cyan: #4fc3f7;
+    --orange: #ffb74d;
+    --pink: #f48fb1;
+    --green: #66bb6a;
+    --purple: #ce93d8;
+    --gold: #ffd54f;
+    --node-fill: #161d30;
+    --node-stroke: #2a3555;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 36px 20px 60px;
+    background-image:
+      radial-gradient(ellipse at 30% 20%, rgba(79,195,247,0.05) 0%, transparent 55%),
+      radial-gradient(ellipse at 70% 80%, rgba(206,147,216,0.04) 0%, transparent 55%);
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 40px;
+    opacity: 0;
+    animation: rise 0.8s ease forwards 0.1s;
+  }
+
+  .sub { font-size: 0.6rem; letter-spacing: 0.25em; text-transform: uppercase; color: var(--dim); margin-bottom: 10px; }
+
+  h1 {
+    font-family: 'Libre Baskerville', serif;
+    font-size: clamp(1.4rem, 4vw, 2.2rem);
+    font-weight: 400;
+  }
+
+  h1 em { font-style: italic; color: var(--cyan); }
+
+  /* Tab bar */
+  .tabs {
+    display: flex; gap: 4px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 4px;
+    margin-bottom: 32px;
+    opacity: 0;
+    animation: rise 0.7s ease forwards 0.25s;
+  }
+
+  .tab {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 7px 16px;
+    border-radius: 5px;
+    border: none;
+    background: transparent;
+    color: var(--dim);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .tab.active { background: var(--node-fill); color: var(--text); border: 1px solid var(--border); }
+  .tab:hover:not(.active) { color: var(--text); }
+
+  /* Main panel */
+  .panel {
+    width: 100%; max-width: 920px;
+    opacity: 0;
+    animation: rise 0.7s ease forwards 0.4s;
+  }
+
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* Network SVG */
+  .net-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 28px 16px 20px;
+    position: relative;
+  }
+
+  .net-title {
+    text-align: center;
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--dim);
+    margin-bottom: 20px;
+  }
+
+  svg.net { width: 100%; height: auto; display: block; overflow: visible; }
+
+  .wire { stroke: var(--dim); stroke-width: 1; fill: none; opacity: 0.35; transition: opacity 0.2s, stroke 0.2s; }
+  .wire:hover { opacity: 1; stroke: var(--cyan); }
+
+  .neuron { cursor: pointer; transition: filter 0.2s; }
+  .neuron:hover { filter: brightness(1.6); }
+
+  .neuron circle { fill: var(--node-fill); stroke: var(--node-stroke); stroke-width: 1.5; transition: stroke 0.2s; }
+  .neuron:hover circle { stroke: var(--cyan); }
+
+  .neuron text {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 7px;
+    fill: var(--cyan);
+    text-anchor: middle;
+    dominant-baseline: middle;
+    pointer-events: none;
+  }
+
+  .layer-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 8px;
+    fill: var(--dim);
+    text-anchor: middle;
+    letter-spacing: 0.05em;
+  }
+
+  /* Info cards row */
+  .info-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-top: 20px;
+  }
+
+  @media(max-width:600px){ .info-row{ grid-template-columns: 1fr 1fr; } }
+
+  .info-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px;
+    text-align: center;
+  }
+
+  .info-card .ic-label { font-size: 0.55rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--dim); margin-bottom: 6px; }
+  .info-card .ic-val { font-size: 1.1rem; font-family: 'Libre Baskerville', serif; }
+  .info-card .ic-sub { font-size: 0.58rem; color: var(--dim); margin-top: 4px; }
+
+  /* Formula view */
+  .formula-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  @media(max-width:580px){ .formula-grid{ grid-template-columns: 1fr; } }
+
+  .fcard {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .fcard::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+  }
+
+  .fcard.c1::before { background: var(--cyan); }
+  .fcard.c2::before { background: var(--orange); }
+  .fcard.c3::before { background: var(--pink); }
+  .fcard.c4::before { background: var(--green); }
+
+  .fcard-title { font-size: 0.62rem; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 10px; }
+  .fcard.c1 .fcard-title { color: var(--cyan); }
+  .fcard.c2 .fcard-title { color: var(--orange); }
+  .fcard.c3 .fcard-title { color: var(--pink); }
+  .fcard.c4 .fcard-title { color: var(--green); }
+
+  .fcard-formula {
+    font-family: 'Libre Baskerville', serif;
+    font-style: italic;
+    font-size: clamp(0.85rem, 2vw, 1.05rem);
+    line-height: 2;
+    color: var(--text);
+    margin-bottom: 10px;
+  }
+
+  .fcard-desc { font-size: 0.62rem; color: var(--dim); line-height: 1.7; }
+
+  sup { font-size: 0.6em; }
+  sub { font-size: 0.6em; }
+
+  /* Tooltip */
+  .tooltip {
+    position: fixed;
+    background: #1a2035;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 0.65rem;
+    color: var(--text);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+    z-index: 999;
+    max-width: 200px;
+    line-height: 1.5;
+  }
+  .tooltip.show { opacity: 1; }
+
+  /* How it works list */
+  .how-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 4px;
+  }
+
+  .how-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px 20px;
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+  }
+
+  .how-num {
+    font-family: 'Libre Baskerville', serif;
+    font-size: 1.4rem;
+    color: var(--border);
+    flex-shrink: 0;
+    line-height: 1;
+    margin-top: 2px;
+  }
+
+  .how-body {}
+  .how-title { font-size: 0.72rem; color: var(--text); margin-bottom: 4px; }
+  .how-desc { font-size: 0.62rem; color: var(--dim); line-height: 1.7; }
+  .how-formula { font-family: 'Libre Baskerville', serif; font-style: italic; color: var(--cyan); font-size: 0.85rem; margin-top: 6px; }
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .credit { margin-top: 40px; font-size: 0.55rem; color: var(--dim); letter-spacing: 0.12em; opacity: 0; animation: rise 0.7s ease forwards 0.9s; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="sub">Lecture 43 · ANN Architecture</div>
+  <h1>From Perceptron to<br><em>Deep Network</em></h1>
+</header>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('diagram')">Network Diagram</button>
+  <button class="tab" onclick="switchTab('formulas')">Layer Formulas</button>
+  <button class="tab" onclick="switchTab('howit')">How It Works</button>
+</div>
+
+<div class="panel">
+
+  <!-- DIAGRAM VIEW -->
+  <div class="view active" id="view-diagram">
+    <div class="net-wrap">
+      <div class="net-title">Interactive — hover nodes &amp; connections</div>
+      <svg class="net" viewBox="0 0 700 300" xmlns="http://www.w3.org/2000/svg" id="netsvg">
+        <!-- drawn by JS -->
+      </svg>
+    </div>
+
+    <div class="info-row">
+      <div class="info-card">
+        <div class="ic-label">Input Layer</div>
+        <div class="ic-val" style="color:var(--cyan)">3</div>
+        <div class="ic-sub">nodes (x₀,x₁,x₂)</div>
+      </div>
+      <div class="info-card">
+        <div class="ic-label">Hidden Layers</div>
+        <div class="ic-val" style="color:var(--orange)">2</div>
+        <div class="ic-sub">4 neurons each</div>
+      </div>
+      <div class="info-card">
+        <div class="ic-label">Output Layer</div>
+        <div class="ic-val" style="color:var(--pink)">1</div>
+        <div class="ic-sub">prediction ŷ</div>
+      </div>
+      <div class="info-card">
+        <div class="ic-label">Each Neuron</div>
+        <div class="ic-val" style="color:var(--green)">σ(xᵀw)</div>
+        <div class="ic-sub">weighted sum + activation</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FORMULAS VIEW -->
+  <div class="view" id="view-formulas">
+    <div class="formula-grid">
+      <div class="fcard c1">
+        <div class="fcard-title">Single Neuron Output</div>
+        <div class="fcard-formula">ŷ = σ(x̃<sup>T</sup>w)</div>
+        <div class="fcard-desc">Each neuron computes a weighted sum of its inputs plus bias, passed through activation σ. The bias is absorbed by prepending x₀=1.</div>
+      </div>
+      <div class="fcard c2">
+        <div class="fcard-title">Layer Output (matrix form)</div>
+        <div class="fcard-formula">a<sup>(l)</sup> = σ(W<sup>(l)</sup> a<sup>(l−1)</sup>)</div>
+        <div class="fcard-desc">An entire layer is one matrix multiplication. W<sup>(l)</sup> holds all weights for layer l. a<sup>(l−1)</sup> is the previous layer's output (activations).</div>
+      </div>
+      <div class="fcard c3">
+        <div class="fcard-title">Full Forward Pass</div>
+        <div class="fcard-formula">ŷ = a<sup>(L)</sup> = σ(W<sup>(L)</sup>···σ(W<sup>(1)</sup>x))</div>
+        <div class="fcard-desc">Stack L layers. Each layer's output feeds as input to the next. The final layer's output is the prediction ŷ.</div>
+      </div>
+      <div class="fcard c4">
+        <div class="fcard-title">Cost to Minimize</div>
+        <div class="fcard-formula">W = arg min<sub>W</sub> 𝒥</div>
+        <div class="fcard-desc">Training finds all weight matrices W<sup>(1)</sup>…W<sup>(L)</sup> that minimize the average loss over the dataset. Done via backpropagation + gradient descent.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HOW IT WORKS VIEW -->
+  <div class="view" id="view-howit">
+    <div class="how-list">
+      <div class="how-item">
+        <div class="how-num">01</div>
+        <div class="how-body">
+          <div class="how-title">Input Layer — raw features</div>
+          <div class="how-desc">The input layer receives raw data (x₀=1 bias, x₁, x₂…). No computation happens here — it just passes values forward. Each input connects to every neuron in the first hidden layer.</div>
+        </div>
+      </div>
+      <div class="how-item">
+        <div class="how-num">02</div>
+        <div class="how-body">
+          <div class="how-title">Hidden Layers — feature learning</div>
+          <div class="how-desc">Each neuron computes a weighted sum of all inputs from the previous layer, then applies an activation function. Deep networks stack multiple hidden layers, each learning increasingly abstract features.</div>
+          <div class="how-formula">a<sup>(l)</sup> = σ(W<sup>(l)</sup> a<sup>(l−1)</sup>)</div>
+        </div>
+      </div>
+      <div class="how-item">
+        <div class="how-num">03</div>
+        <div class="how-body">
+          <div class="how-title">Output Layer — prediction ŷ</div>
+          <div class="how-desc">The final layer produces the prediction. For regression: linear activation, one neuron. For binary classification: sigmoid, one neuron. For multi-class: softmax, one neuron per class.</div>
+          <div class="how-formula">ŷ = σ(x̃<sup>T</sup>w)  →  single number or vector</div>
+        </div>
+      </div>
+      <div class="how-item">
+        <div class="how-num">04</div>
+        <div class="how-body">
+          <div class="how-title">Why "deep"?</div>
+          <div class="how-desc">A single neuron can only draw a linear boundary. Multiple layers of nonlinear neurons can approximate any function — curves, spirals, complex decision boundaries. Depth = expressive power.</div>
+        </div>
+      </div>
+      <div class="how-item">
+        <div class="how-num">05</div>
+        <div class="how-body">
+          <div class="how-title">Training — backpropagation</div>
+          <div class="how-desc">After the forward pass produces ŷ, the error flows backwards through all layers, computing how much each weight contributed to the error. Gradient descent then nudges every weight slightly in the direction that reduces cost.</div>
+          <div class="how-formula">W ← W − η · ∂𝒥/∂W</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="credit">Deep Understanding of Deep Learning · MX Cohen · sincxpress.com</div>
+<div class="tooltip" id="tt"></div>
+
+<script>
+// ── Network layout ──────────────────────────────────────────────
+const layers = [
+  { x: 90,  nodes: 3, label: 'Input',    color: '#4fc3f7' },
+  { x: 250, nodes: 4, label: 'Hidden 1', color: '#ffb74d' },
+  { x: 420, nodes: 4, label: 'Hidden 2', color: '#ffb74d' },
+  { x: 590, nodes: 1, label: 'Output',   color: '#f48fb1' },
+];
+
+const SVG_H = 300;
+const R = 20;
+
+function cy(i, n) {
+  const total = (n - 1) * 70;
+  const start = (SVG_H - total) / 2;
+  return start + i * 70;
+}
+
+const svg = document.getElementById('netsvg');
+const ns = 'http://www.w3.org/2000/svg';
+
+function el(tag, attrs) {
+  const e = document.createElementNS(ns, tag);
+  Object.entries(attrs).forEach(([k,v]) => e.setAttribute(k, v));
+  return e;
+}
+
+const tt = document.getElementById('tt');
+let hideTimer;
+
+function showTip(text, e) {
+  clearTimeout(hideTimer);
+  tt.textContent = text;
+  tt.classList.add('show');
+  moveTip(e);
+}
+function moveTip(e) {
+  tt.style.left = (e.clientX + 14) + 'px';
+  tt.style.top  = (e.clientY - 10) + 'px';
+}
+function hideTip() {
+  hideTimer = setTimeout(() => tt.classList.remove('show'), 180);
+}
+
+// Wires
+layers.forEach((layer, li) => {
+  if (li === layers.length - 1) return;
+  const next = layers[li + 1];
+  for (let i = 0; i < layer.nodes; i++) {
+    for (let j = 0; j < next.nodes; j++) {
+      const line = el('line', {
+        class: 'wire',
+        x1: layer.x + R, y1: cy(i, layer.nodes),
+        x2: next.x - R,  y2: cy(j, next.nodes),
+      });
+      const tip = `w: layer ${li+1}→${li+2}, neuron ${i+1}→${j+1}`;
+      line.addEventListener('mouseenter', e => showTip(tip, e));
+      line.addEventListener('mousemove', moveTip);
+      line.addEventListener('mouseleave', hideTip);
+      svg.appendChild(line);
+    }
+  }
+});
+
+// Nodes
+const nodeLabels = [
+  ['x₀','x₁','x₂'],
+  ['σ(x̃ᵀw)','σ(x̃ᵀw)','σ(x̃ᵀw)','σ(x̃ᵀw)'],
+  ['σ(x̃ᵀw)','σ(x̃ᵀw)','σ(x̃ᵀw)','σ(x̃ᵀw)'],
+  ['ŷ'],
+];
+const nodeTips = [
+  ['Input x₀ (bias=1)', 'Input x₁', 'Input x₂'],
+  Array(4).fill('Hidden neuron: σ(x̃ᵀw)'),
+  Array(4).fill('Hidden neuron: σ(x̃ᵀw)'),
+  ['Output ŷ = prediction'],
+];
+
+layers.forEach((layer, li) => {
+  // Layer label
+  const lbl = el('text', {
+    class: 'layer-label',
+    x: layer.x, y: 14,
+    fill: layer.color,
+  });
+  lbl.textContent = layer.label;
+  svg.appendChild(lbl);
+
+  for (let i = 0; i < layer.nodes; i++) {
+    const cx2 = layer.x, cy2 = cy(i, layer.nodes);
+    const g = el('g', { class: 'neuron' });
+
+    const circle = el('circle', { cx: cx2, cy: cy2, r: R });
+    circle.style.stroke = layer.color + '88';
+
+    const txt = el('text', { x: cx2, y: cy2, fill: layer.color });
+    txt.style.fontSize = li === 0 ? '9px' : '6px';
+    txt.textContent = nodeLabels[li][i];
+
+    g.appendChild(circle);
+    g.appendChild(txt);
+
+    const tip = nodeTips[li][i];
+    g.addEventListener('mouseenter', e => showTip(tip, e));
+    g.addEventListener('mousemove', moveTip);
+    g.addEventListener('mouseleave', hideTip);
+
+    svg.appendChild(g);
+  }
+
+  // Arrow out of output
+  if (li === layers.length - 1) {
+    const ax = layer.x + R;
+    const ay = cy(0, 1);
+    const arr = el('line', { x1: ax, y1: ay, x2: ax+50, y2: ay, stroke: '#f48fb1', 'stroke-width': 1.5, opacity: 0.8 });
+    const arrowHead = el('polygon', { points: `${ax+50},${ay-4} ${ax+62},${ay} ${ax+50},${ay+4}`, fill: '#f48fb1', opacity: 0.8 });
+    const yhat = el('text', { x: ax+70, y: ay+5, fill: '#f48fb1', 'font-family': 'Libre Baskerville,serif', 'font-size': '14', 'font-style': 'italic' });
+    yhat.textContent = 'ŷ';
+    svg.appendChild(arr);
+    svg.appendChild(arrowHead);
+    svg.appendChild(yhat);
+  }
+});
+
+// Tab switching
+function switchTab(id) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelector(`[onclick="switchTab('${id}')"]`).classList.add('active');
+  document.getElementById('view-' + id).classList.add('active');
+}
+</script>
+</body>
+</html>
+
