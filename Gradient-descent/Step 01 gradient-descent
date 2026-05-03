@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gradient Descent</title>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;1,400&family=IBM+Plex+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #090c14;
+    --surface: #0f1421;
+    --border: #1c2438;
+    --text: #dce4f8;
+    --dim: #3a4a6a;
+    --cyan: #4fc3f7;
+    --orange: #ffb74d;
+    --pink: #f48fb1;
+    --green: #66bb6a;
+    --red: #ef5350;
+    --gold: #ffd54f;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    min-height: 100vh;
+    padding: 36px 16px 60px;
+    background-image:
+      radial-gradient(ellipse at 15% 15%, rgba(79,195,247,0.05) 0%, transparent 50%),
+      radial-gradient(ellipse at 85% 85%, rgba(255,183,77,0.04) 0%, transparent 50%);
+  }
+
+  header { text-align:center; margin-bottom:36px; animation: rise 0.7s ease forwards; opacity:0; }
+  .sub { font-size:0.58rem; letter-spacing:0.25em; text-transform:uppercase; color:var(--dim); margin-bottom:10px; }
+  h1 { font-family:'Libre Baskerville',serif; font-size:clamp(1.5rem,4vw,2.2rem); font-weight:400; }
+  h1 em { font-style:italic; color:var(--orange); }
+
+  /* Tabs */
+  .tabs { display:flex; gap:4px; background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:4px; margin:0 auto 28px; width:fit-content; max-width:100%; flex-wrap:wrap; justify-content:center; opacity:0; animation:rise 0.7s ease forwards 0.15s; }
+  .tab { font-family:'IBM Plex Mono',monospace; font-size:0.58rem; letter-spacing:0.1em; text-transform:uppercase; padding:7px 14px; border-radius:5px; border:none; background:transparent; color:var(--dim); cursor:pointer; transition:all 0.2s; white-space:nowrap; }
+  .tab.active { background:var(--border); color:var(--text); }
+  .tab:hover:not(.active) { color:var(--text); }
+
+  .panel { max-width:900px; margin:0 auto; opacity:0; animation:rise 0.7s ease forwards 0.3s; }
+  .view { display:none; }
+  .view.active { display:block; }
+
+  /* Cards */
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:24px; margin-bottom:16px; position:relative; overflow:hidden; }
+  .card::before { content:''; position:absolute; left:0; top:0; bottom:0; width:3px; }
+  .card.orange::before { background:var(--orange); }
+  .card.cyan::before { background:var(--cyan); }
+  .card.pink::before { background:var(--pink); }
+  .card.green::before { background:var(--green); }
+  .card.red::before { background:var(--red); }
+  .card.gold::before { background:var(--gold); }
+
+  .card-title { font-size:0.62rem; letter-spacing:0.15em; text-transform:uppercase; margin-bottom:12px; }
+  .card.orange .card-title { color:var(--orange); }
+  .card.cyan .card-title { color:var(--cyan); }
+  .card.pink .card-title { color:var(--pink); }
+  .card.green .card-title { color:var(--green); }
+  .card.red .card-title { color:var(--red); }
+  .card.gold .card-title { color:var(--gold); }
+
+  .card-body { font-size:0.68rem; color:var(--dim); line-height:1.8; }
+  .card-body strong { color:var(--text); font-weight:400; }
+
+  .formula { font-family:'Libre Baskerville',serif; font-style:italic; font-size:clamp(0.9rem,2.5vw,1.15rem); color:var(--text); text-align:center; padding:16px; background:rgba(255,255,255,0.02); border:1px solid var(--border); border-radius:6px; margin:12px 0; line-height:2; }
+
+  .two-col { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  @media(max-width:560px){ .two-col{ grid-template-columns:1fr; } }
+
+  /* Step list */
+  .steps { display:flex; flex-direction:column; gap:12px; }
+  .step { display:flex; gap:16px; align-items:flex-start; }
+  .step-num { width:32px; height:32px; border-radius:50%; border:1px solid var(--orange); color:var(--orange); display:flex; align-items:center; justify-content:center; font-size:0.7rem; flex-shrink:0; }
+  .step-content {}
+  .step-title { font-size:0.7rem; color:var(--text); margin-bottom:4px; }
+  .step-desc { font-size:0.62rem; color:var(--dim); line-height:1.7; }
+  .step-code { font-size:0.62rem; color:var(--cyan); margin-top:6px; font-family:'IBM Plex Mono',monospace; }
+
+  /* Live simulator */
+  .sim-wrap { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:20px; }
+  .sim-title { font-size:0.6rem; letter-spacing:0.2em; text-transform:uppercase; color:var(--dim); margin-bottom:16px; text-align:center; }
+
+  canvas#simCanvas { width:100%; height:280px; display:block; border-radius:6px; background:#080c14; cursor:crosshair; }
+
+  .controls { display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin-top:16px; }
+  .ctrl-group { display:flex; flex-direction:column; gap:4px; flex:1; min-width:120px; }
+  .ctrl-label { font-size:0.58rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--dim); }
+  .ctrl-val { font-size:0.7rem; color:var(--orange); }
+
+  input[type=range] { width:100%; accent-color:var(--orange); cursor:pointer; }
+
+  .btn { font-family:'IBM Plex Mono',monospace; font-size:0.62rem; letter-spacing:0.1em; text-transform:uppercase; padding:8px 18px; border-radius:4px; border:1px solid; cursor:pointer; transition:all 0.2s; }
+  .btn-start { background:var(--orange); border-color:var(--orange); color:#000; }
+  .btn-start:hover { opacity:0.85; }
+  .btn-reset { background:transparent; border-color:var(--border); color:var(--dim); }
+  .btn-reset:hover { border-color:var(--text); color:var(--text); }
+
+  .sim-info { display:flex; gap:20px; flex-wrap:wrap; margin-top:12px; }
+  .sim-stat { font-size:0.62rem; }
+  .sim-stat span { color:var(--orange); }
+
+  /* Problem with GD */
+  .problem-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  @media(max-width:560px){ .problem-grid{ grid-template-columns:1fr; } }
+
+  /* Annotation badge */
+  .badge { display:inline-block; font-size:0.55rem; padding:2px 8px; border-radius:10px; border:1px solid var(--border); color:var(--dim); margin-left:8px; vertical-align:middle; }
+
+  @keyframes rise { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+
+  .credit { text-align:center; margin-top:40px; font-size:0.55rem; color:var(--dim); letter-spacing:0.12em; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="sub">Lecture 30–32 · Optimization</div>
+  <h1>Gradient Descent —<br><em>Theory &amp; Algorithm</em></h1>
+</header>
+
+<div class="tabs">
+  <button class="tab active" onclick="sw('theory')">Theory</button>
+  <button class="tab" onclick="sw('algorithm')">Algorithm</button>
+  <button class="tab" onclick="sw('simulate')">Live Simulation</button>
+  <button class="tab" onclick="sw('problems')">Problems</button>
+</div>
+
+<div class="panel">
+
+  <!-- THEORY -->
+  <div class="view active" id="view-theory">
+    <div class="card orange">
+      <div class="card-title">How deep learning models learn</div>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-content"><div class="step-title">Guess a solution</div><div class="step-desc">Initialize weights W randomly. The model makes a prediction ŷ — almost certainly wrong at first.</div></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-content"><div class="step-title">Compute the error</div><div class="step-desc">Measure how wrong the prediction is using a loss/cost function 𝒥(W). This creates an "error landscape" over all possible weights.</div></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-content"><div class="step-title">Learn from mistakes — modify parameters</div><div class="step-desc">Use the gradient of 𝒥 to figure out which direction makes the error go down, then nudge W that way.</div></div></div>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <div class="card cyan">
+        <div class="card-title">The error landscape</div>
+        <div class="card-body">The cost 𝒥(W) forms a surface over all possible weight values. <strong>Training = finding the lowest point on this surface.</strong> In 1D it's a curve; in reality it's a high-dimensional landscape with many valleys.</div>
+      </div>
+      <div class="card pink">
+        <div class="card-title">The weight update rule</div>
+        <div class="formula">w ← w − η · ∂𝒥/∂w</div>
+        <div class="card-body"><strong>η</strong> = learning rate (step size)<br><strong>∂𝒥/∂w</strong> = gradient (slope of error)<br>Subtract gradient → move downhill</div>
+      </div>
+    </div>
+
+    <div class="card green">
+      <div class="card-title">Why the gradient points downhill</div>
+      <div class="card-body">The gradient ∂𝒥/∂w tells you the slope at the current position. If the slope is <strong>positive</strong>, the function goes up to the right — so you move left (subtract). If <strong>negative</strong>, move right. Subtracting the gradient always moves you toward lower cost.</div>
+    </div>
+  </div>
+
+  <!-- ALGORITHM -->
+  <div class="view" id="view-algorithm">
+    <div class="card orange">
+      <div class="card-title">Gradient Descent Algorithm</div>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-content">
+          <div class="step-title">Initialize random guess of minimum</div>
+          <div class="step-desc">Pick a random starting weight w₀. In deep networks, weights are typically initialized from a small random distribution (e.g. Xavier, He).</div>
+          <div class="step-code">w = random_init()</div>
+        </div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-content">
+          <div class="step-title">Loop over training iterations</div>
+          <div class="step-desc">Repeat for many epochs (passes through data). Each iteration moves the weights a little closer to the minimum.</div>
+          <div class="step-code">for epoch in range(epochs):</div>
+        </div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-content">
+          <div class="step-title">Compute derivative at current guess</div>
+          <div class="step-desc">Calculate the gradient of the loss with respect to each weight. This is what backpropagation computes efficiently.</div>
+          <div class="step-code">grad = ∂𝒥/∂w  ← backprop</div>
+        </div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-content">
+          <div class="step-title">Update: new guess = old minus gradient × η</div>
+          <div class="step-desc">Move the weight in the direction of steepest descent, scaled by the learning rate η.</div>
+          <div class="step-code">w ← w − η · grad</div>
+        </div></div>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <div class="card cyan">
+        <div class="card-title">Learning rate η</div>
+        <div class="card-body">
+          <strong>Too large</strong> → overshoots, may diverge<br><br>
+          <strong>Too small</strong> → painfully slow convergence<br><br>
+          <strong>Just right</strong> → smooth descent to minimum<br><br>
+          Typical values: 0.1, 0.01, 0.001
+        </div>
+      </div>
+      <div class="card gold">
+        <div class="card-title">Why not just solve analytically?</div>
+        <div class="card-body">For simple functions like f(x) = 3x²−3x, set df/dx = 0:<br><br>
+        <strong>6x − 3 = 0 → x = 0.5</strong><br><br>
+        But with millions of parameters and nonlinear activations, analytical solutions are impossible. Gradient descent is the practical alternative.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIMULATE -->
+  <div class="view" id="view-simulate">
+    <div class="sim-wrap">
+      <div class="sim-title">Live gradient descent on f(x) = 3x² − 3x &nbsp;·&nbsp; click canvas to set start position</div>
+      <canvas id="simCanvas" width="860" height="280"></canvas>
+      <div class="controls">
+        <div class="ctrl-group">
+          <div class="ctrl-label">Learning rate η</div>
+          <input type="range" id="lrSlider" min="0.01" max="0.8" step="0.01" value="0.15">
+          <div class="ctrl-val" id="lrVal">0.15</div>
+        </div>
+        <div class="ctrl-group">
+          <div class="ctrl-label">Iterations</div>
+          <input type="range" id="iterSlider" min="5" max="100" step="1" value="30">
+          <div class="ctrl-val" id="iterVal">30</div>
+        </div>
+        <button class="btn btn-start" id="runBtn" onclick="runGD()">▶ Run</button>
+        <button class="btn btn-reset" onclick="resetSim()">↺ Reset</button>
+      </div>
+      <div class="sim-info">
+        <div class="sim-stat">x: <span id="statX">—</span></div>
+        <div class="sim-stat">f(x): <span id="statFx">—</span></div>
+        <div class="sim-stat">gradient: <span id="statG">—</span></div>
+        <div class="sim-stat">iteration: <span id="statIter">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROBLEMS -->
+  <div class="view" id="view-problems">
+    <div class="problem-grid">
+      <div class="card red">
+        <div class="card-title">Local Minima</div>
+        <div class="card-body">The error landscape can have multiple valleys. Gradient descent finds the nearest valley — which may not be the global minimum. In practice, deep networks have many saddle points but true local minima are rare in high dimensions.</div>
+      </div>
+      <div class="card orange">
+        <div class="card-title">Vanishing Gradients</div>
+        <div class="card-body">In deep networks, gradients can shrink exponentially as they propagate backwards through layers. Early layers receive near-zero updates and stop learning. <strong>Fix:</strong> ReLU activations, residual connections, batch norm.</div>
+      </div>
+      <div class="card pink">
+        <div class="card-title">Exploding Gradients</div>
+        <div class="card-body">Opposite problem — gradients grow exponentially, causing huge weight updates and divergence. Common in RNNs. <strong>Fix:</strong> gradient clipping, careful initialization.</div>
+      </div>
+      <div class="card gold">
+        <div class="card-title">Saddle Points</div>
+        <div class="card-body">A saddle point is flat in some dimensions, curved in others — gradient is zero but it's not a minimum. Common in high-dimensional loss landscapes. SGD noise actually helps escape saddle points.</div>
+      </div>
+      <div class="card cyan">
+        <div class="card-title">Learning Rate Too Large</div>
+        <div class="card-body">If η is too big, the update overshoots the minimum and bounces back and forth, possibly diverging. The cost oscillates or increases instead of decreasing.</div>
+      </div>
+      <div class="card green">
+        <div class="card-title">Solutions</div>
+        <div class="card-body"><strong>Adam</strong> — adaptive learning rate per parameter<br><strong>Momentum</strong> — accumulate velocity to escape local minima<br><strong>Learning rate scheduling</strong> — start large, decay over time<br><strong>Mini-batches</strong> — add noise to help escape bad regions</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="credit">Deep Understanding of Deep Learning · MX Cohen · sincxpress.com</div>
+
+<script>
+// ── Tab switching ──────────────────────────────────────────────
+function sw(id) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelector(`[onclick="sw('${id}')"]`).classList.add('active');
+  document.getElementById('view-' + id).classList.add('active');
+  if (id === 'simulate') initCanvas();
+}
+
+// ── Simulation ─────────────────────────────────────────────────
+const f  = x => 3*x*x - 3*x;
+const df = x => 6*x - 3;
+
+let startX = -1.2;
+let running = false;
+let animId;
+
+const canvas = document.getElementById('simCanvas');
+const ctx = canvas.getContext('2d');
+
+const lrSlider = document.getElementById('lrSlider');
+const iterSlider = document.getElementById('iterSlider');
+const lrVal = document.getElementById('lrVal');
+const iterVal = document.getElementById('iterVal');
+
+lrSlider.addEventListener('input', () => { lrVal.textContent = lrSlider.value; drawStatic(); });
+iterSlider.addEventListener('input', () => { iterVal.textContent = iterSlider.value; });
+
+function canvasSize() {
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * devicePixelRatio;
+  canvas.height = rect.height * devicePixelRatio;
+}
+
+const xMin = -2.2, xMax = 2.2, yMin = -1.5, yMax = 20;
+
+function toPx(xv, yv) {
+  const w = canvas.width, h = canvas.height;
+  return [
+    ((xv - xMin) / (xMax - xMin)) * w,
+    h - ((yv - yMin) / (yMax - yMin)) * h
+  ];
+}
+
+function fromPx(px, py) {
+  const w = canvas.width, h = canvas.height;
+  return xMin + (px / w) * (xMax - xMin);
+}
+
+function drawGrid() {
+  const w = canvas.width, h = canvas.height;
+  ctx.strokeStyle = '#1a2235';
+  ctx.lineWidth = 1;
+  for (let x = Math.ceil(xMin); x <= xMax; x++) {
+    const [px] = toPx(x, 0);
+    ctx.beginPath(); ctx.moveTo(px, 0); ctx.lineTo(px, h); ctx.stroke();
+  }
+  for (let y = 0; y <= 20; y += 5) {
+    const [, py] = toPx(0, y);
+    ctx.beginPath(); ctx.moveTo(0, py); ctx.lineTo(w, py); ctx.stroke();
+  }
+  // axes
+  ctx.strokeStyle = '#2a3550'; ctx.lineWidth = 1.5;
+  const [ax0, ay0] = toPx(xMin, 0); const [ax1] = toPx(xMax, 0);
+  ctx.beginPath(); ctx.moveTo(ax0, ay0); ctx.lineTo(ax1, ay0); ctx.stroke();
+  const [bx0, by0] = toPx(0, yMin); const [, by1] = toPx(0, yMax);
+  ctx.beginPath(); ctx.moveTo(bx0, by0); ctx.lineTo(bx0, by1); ctx.stroke();
+
+  // axis labels
+  ctx.fillStyle = '#2a3550'; ctx.font = `${10 * devicePixelRatio}px IBM Plex Mono`;
+  for (let x = Math.ceil(xMin); x <= xMax; x++) {
+    const [px, py] = toPx(x, 0);
+    ctx.fillText(x, px + 3, py - 4);
+  }
+}
+
+function drawCurve() {
+  ctx.strokeStyle = '#4fc3f7'; ctx.lineWidth = 2 * devicePixelRatio;
+  ctx.beginPath();
+  let first = true;
+  for (let px = 0; px < canvas.width; px++) {
+    const xv = fromPx(px);
+    const yv = f(xv);
+    if (yv > yMax || yv < yMin) { first = true; continue; }
+    const [, py] = toPx(xv, yv);
+    if (first) { ctx.moveTo(px, py); first = false; }
+    else ctx.lineTo(px, py);
+  }
+  ctx.stroke();
+
+  // derivative curve
+  ctx.strokeStyle = '#ffb74d'; ctx.lineWidth = 1.5 * devicePixelRatio; ctx.setLineDash([4,4]);
+  ctx.beginPath(); first = true;
+  for (let px = 0; px < canvas.width; px++) {
+    const xv = fromPx(px);
+    const yv = df(xv);
+    if (yv > yMax || yv < yMin) { first = true; continue; }
+    const [, py] = toPx(xv, yv);
+    if (first) { ctx.moveTo(px, py); first = false; }
+    else ctx.lineTo(px, py);
+  }
+  ctx.stroke(); ctx.setLineDash([]);
+
+  // global minimum
+  const [mx, my] = toPx(0.5, f(0.5));
+  ctx.fillStyle = '#66bb6a'; ctx.beginPath(); ctx.arc(mx, my, 5 * devicePixelRatio, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#66bb6a'; ctx.font = `${9 * devicePixelRatio}px IBM Plex Mono`;
+  ctx.fillText('global min (0.5)', mx + 8, my - 6);
+}
+
+function drawDot(xv, color = '#f48fb1', label = '') {
+  const yv = f(xv);
+  if (yv > yMax || yv < yMin) return;
+  const [px, py] = toPx(xv, yv);
+  ctx.fillStyle = color;
+  ctx.beginPath(); ctx.arc(px, py, 7 * devicePixelRatio, 0, Math.PI*2); ctx.fill();
+  if (label) {
+    ctx.fillStyle = color; ctx.font = `${9 * devicePixelRatio}px IBM Plex Mono`;
+    ctx.fillText(label, px + 10, py - 4);
+  }
+}
+
+function drawLegend() {
+  const w = canvas.width;
+  ctx.font = `${9 * devicePixelRatio}px IBM Plex Mono`;
+  ctx.fillStyle = '#4fc3f7'; ctx.fillText('— f(x) = 3x²−3x', 12, 18 * devicePixelRatio);
+  ctx.fillStyle = '#ffb74d'; ctx.fillText('-- df/dx = 6x−3', 12, 32 * devicePixelRatio);
+}
+
+function drawStatic() {
+  canvasSize();
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawGrid(); drawCurve(); drawLegend();
+  drawDot(startX, '#f48fb1', `start (${startX.toFixed(2)})`);
+}
+
+
