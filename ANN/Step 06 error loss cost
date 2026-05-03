@@ -1,0 +1,58 @@
+This is lecture 43 covering **errors, loss, and cost** — the full pipeline from a single prediction error to the optimization goal.
+
+---
+
+## Image 1 — Expectation vs. Reality
+
+The model outputs **ŷ** (prediction), reality is **y** (true label). Two ways to measure error:
+
+| Sample | ŷ | y | Error (continuous) | Bin.err |
+|--------|---|---|--------------------|---------|
+| X₁ | .9 | 1 | −.1 | 0 |
+| X₂ | .2 | 0 | +.2 | 0 |
+| X₃ | .1 | 1 | −.9 | **1** |
+| X₄ | .51 | 0 | +.51 | **1** |
+
+- **Binarized error** — easy to interpret (right/wrong), but loses magnitude info
+- **Continuous error** = ŷ − y, more sensitive but signed (positives and negatives can cancel out)
+
+---
+
+## Image 2 — Loss Functions
+
+| | MSE | Cross-Entropy |
+|---|---|---|
+| **Use for** | Continuous output (regression) | Probability output (classification) |
+| **Examples** | height, price, temperature | disease detection, sentiment |
+| **Formula** | ℒ = ½(ŷ − y)² | ℒ = −(y·log(ŷ) + (1−y)·log(1−ŷ)) |
+
+Loss = error **for a single sample**.
+
+---
+
+## Image 3 — From Loss to Cost
+
+$$\mathcal{J} = \frac{1}{n}\sum_{i=1}^{n} \mathcal{L}(\hat{y}_i, y_i)$$
+
+**Cost = average loss over all samples.** This is what the model actually minimizes during training.
+
+---
+
+## Image 4 — The Goal of Deep Learning Optimization
+
+$$\mathbf{W} = \underset{\mathbf{W}}{\arg\min}\ \mathcal{J} = \frac{1}{n}\sum_{i=1}^{n}\mathcal{L}(f(x, \mathbf{W})_i, y_i)$$
+
+The goal is to find the **set of weights W** that minimizes the cost. The model f(x, W) makes predictions — training is just searching for the best W.
+
+---
+
+## Image 5 — Why Cost (not Loss)?
+
+- Training on **each sample individually** → slow + overfitting
+- Averaging over **all samples at once** → loses sensitivity to individual patterns
+- ✅ Solution: **mini-batch training** — average over small random subsets of data each step, balancing speed and sensitivity
+
+---
+
+## The full hierarchy
+**Error** (one prediction) → **Loss** (one sample) → **Cost** (whole dataset) → **Minimize via backprop**
