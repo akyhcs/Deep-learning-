@@ -1,0 +1,403 @@
+This  (lecture 42, ANN math part 1 — forward propagation) shows **how the summation expands into a dot product**, step by step.
+
+## What the left panel is proving
+
+**Step 1 — Expand the sum:**
+$$x_0w_0 + \sum_{i=1}^{m} x_iw_i = x_0w_0 + x_1w_1 + x_2w_2$$
+
+**Step 2 — Write x and w as vectors (bias separate):**
+$$x_0w_0 + \begin{bmatrix} x_1 & x_2 \end{bmatrix} \begin{bmatrix} w_1 \\ w_2 \end{bmatrix} = x_0w_0 + x_1w_1 + x_2w_2$$
+
+**Step 3 — Absorb the bias into the vectors:**
+$$\begin{bmatrix} x_0 & x_1 & x_2 \end{bmatrix} \begin{bmatrix} w_0 \\ w_1 \\ w_2 \end{bmatrix} = x_0w_0 + x_1w_1 + x_2w_2$$
+
+## The key insight
+All three expressions produce the **same scalar result**. The point is that by prepending x₀=1 to the input vector and w₀ (the bias weight) to the weight vector, you can express the entire computation — bias included — as a single clean **dot product x̃ᵀw**. This is why neural networks are implemented as matrix multiplications in code.
+
+This slide is from a deep learning course ("Deep Understanding of Deep Learning" by Mike Cohen) and shows how a **single neuron/perceptron** works mathematically.
+
+## What it's showing
+
+**The diagram** (left): Inputs x₀, x₁, x₂ are each multiplied by weights w₀, w₁, w₂, summed together, then passed through an activation function σ to produce output ŷ.
+
+**The math** (right) shows three equivalent forms:
+
+1. **Expanded form:**
+$$\hat{y} = \sigma\left(x_0w_0 + \sum_{i=1}^{m} x_i w_i\right)$$
+The bias term x₀w₀ is written separately, then the rest are summed.
+
+2. **Vector form:**
+$$\hat{y} = \sigma(w_0 + \mathbf{x}^T\mathbf{w})$$
+The weighted sum is written as a dot product of vectors, with the bias w₀ explicit.
+
+3. **Compact form:**
+$$\hat{y} = \sigma(\tilde{\mathbf{x}}^T\mathbf{w})$$
+The bias is absorbed into the weight vector by prepending a 1 to **x**, making it fully vectorized.
+
+
+## Key idea
+The neuron computes a **weighted sum of its inputs plus a bias**, then squashes the result through a **nonlinear activation function** σ (like sigmoid or ReLU). The compact dot-product form is what's actually implemented in code (e.g., with NumPy or PyTorch).
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Model and the Math</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600&family=Crimson+Pro:ital,wght@0,300;0,600;1,300&display=swap');
+
+  :root {
+    --bg: #0d0f14;
+    --panel: #131620;
+    --border: #1e2535;
+    --x0: #4fc3f7;
+    --x1: #ef5350;
+    --x2: #66bb6a;
+    --w0: #ffb74d;
+    --w1: #ce93d8;
+    --w2: #80cbc4;
+    --neuron: #e0e0e0;
+    --sigma: #ef9a9a;
+    --output: #a5d6a7;
+    --text: #e8eaf6;
+    --dim: #546e7a;
+    --glow: rgba(79, 195, 247, 0.15);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    overflow-x: hidden;
+  }
+
+  h1 {
+    font-family: 'Crimson Pro', serif;
+    font-weight: 300;
+    font-size: clamp(1.4rem, 4vw, 2rem);
+    letter-spacing: 0.12em;
+    color: var(--text);
+    margin-bottom: 32px;
+    opacity: 0;
+    animation: fadeDown 0.8s ease forwards 0.1s;
+  }
+
+  .container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    width: 100%;
+    max-width: 900px;
+    opacity: 0;
+    animation: fadeUp 0.9s ease forwards 0.4s;
+  }
+
+  @media (max-width: 620px) {
+    .container { grid-template-columns: 1fr; }
+  }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px 20px;
+  }
+
+  .panel-label {
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    color: var(--dim);
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+
+  /* SVG Diagram */
+  svg {
+    width: 100%;
+    height: auto;
+    overflow: visible;
+  }
+
+  .wire {
+    stroke-width: 2;
+    fill: none;
+    stroke-linecap: round;
+  }
+
+  .node {
+    cursor: pointer;
+    transition: filter 0.2s;
+  }
+  .node:hover { filter: brightness(1.3); }
+
+  /* Math panel */
+  .math-block {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .eq {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.02);
+    font-size: clamp(0.75rem, 2vw, 0.9rem);
+    line-height: 1.6;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .eq:hover {
+    border-color: rgba(79,195,247,0.4);
+    background: rgba(79,195,247,0.04);
+  }
+
+  .eq::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    border-radius: 3px 0 0 3px;
+  }
+
+  .eq.expanded::before { background: var(--x0); }
+  .eq.vector::before   { background: var(--w1); }
+  .eq.compact::before  { background: var(--output); }
+
+  .eq-label {
+    font-size: 0.6rem;
+    color: var(--dim);
+    letter-spacing: 0.1em;
+    margin-bottom: 4px;
+    display: block;
+  }
+
+  .math {
+    font-family: 'Crimson Pro', serif;
+    font-size: clamp(0.9rem, 2.5vw, 1.15rem);
+    font-style: italic;
+    line-height: 1.8;
+  }
+
+  .cx { color: var(--x0); }
+  .cr { color: var(--x1); }
+  .cg { color: var(--x2); }
+  .cw { color: var(--w0); }
+  .cp { color: var(--w1); }
+  .co { color: var(--output); }
+  .cs { color: var(--sigma); }
+
+  sup { font-size: 0.6em; }
+
+  .tooltip {
+    position: fixed;
+    background: #1a1f2e;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 0.72rem;
+    color: var(--text);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+    z-index: 100;
+    max-width: 220px;
+    line-height: 1.5;
+  }
+  .tooltip.show { opacity: 1; }
+
+  .legend {
+    margin-top: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.65rem;
+    color: var(--dim);
+  }
+  .legend-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .pulse {
+    animation: pulse 2.5s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 0.7; }
+    50%       { opacity: 1; }
+  }
+
+  .credit {
+    margin-top: 20px;
+    font-size: 0.6rem;
+    color: var(--dim);
+    letter-spacing: 0.1em;
+    opacity: 0;
+    animation: fadeUp 1s ease forwards 0.8s;
+  }
+</style>
+</head>
+<body>
+
+<h1>The Model &amp; The Math</h1>
+
+<div class="container">
+  <!-- Left: Diagram -->
+  <div class="panel">
+    <div class="panel-label">Network Diagram</div>
+    <svg viewBox="0 0 260 200" xmlns="http://www.w3.org/2000/svg">
+      <!-- Wires: inputs → sum node -->
+      <line class="wire" x1="50" y1="40"  x2="120" y2="95" stroke="#4fc3f7" opacity="0.7"/>
+      <line class="wire" x1="50" y1="100" x2="120" y2="100" stroke="#ef5350" opacity="0.7"/>
+      <line class="wire" x1="50" y1="160" x2="120" y2="105" stroke="#66bb6a" opacity="0.7"/>
+
+      <!-- Weight labels on wires -->
+      <text x="72" y="58"  font-family="Crimson Pro,serif" font-size="12" font-style="italic" fill="#ffb74d">w₀</text>
+      <text x="78" y="96"  font-family="Crimson Pro,serif" font-size="12" font-style="italic" fill="#ce93d8">w₁</text>
+      <text x="72" y="140" font-family="Crimson Pro,serif" font-size="12" font-style="italic" fill="#80cbc4">w₂</text>
+
+      <!-- Wire: sum → sigma -->
+      <line class="wire" x1="143" y1="100" x2="178" y2="100" stroke="#e0e0e0" opacity="0.5"/>
+
+      <!-- Arrow: sigma → output -->
+      <line class="wire" x1="203" y1="100" x2="238" y2="100" stroke="#a5d6a7" opacity="0.8"/>
+      <polygon points="238,96 246,100 238,104" fill="#a5d6a7" opacity="0.8"/>
+
+      <!-- Input nodes -->
+      <g class="node" data-tip="Input feature x₀ (often the bias input = 1)">
+        <circle cx="36" cy="40" r="14" fill="#0d1a2a" stroke="#4fc3f7" stroke-width="2"/>
+        <text x="36" y="45" text-anchor="middle" font-family="Crimson Pro,serif" font-size="13" font-style="italic" fill="#4fc3f7">x₀</text>
+      </g>
+      <g class="node" data-tip="Input feature x₁">
+        <circle cx="36" cy="100" r="14" fill="#0d1a2a" stroke="#ef5350" stroke-width="2"/>
+        <text x="36" y="105" text-anchor="middle" font-family="Crimson Pro,serif" font-size="13" font-style="italic" fill="#ef5350">x₁</text>
+      </g>
+      <g class="node" data-tip="Input feature x₂">
+        <circle cx="36" cy="160" r="14" fill="#0d1a2a" stroke="#66bb6a" stroke-width="2"/>
+        <text x="36" y="165" text-anchor="middle" font-family="Crimson Pro,serif" font-size="13" font-style="italic" fill="#66bb6a">x₂</text>
+      </g>
+
+      <!-- Summation node -->
+      <g class="node pulse" data-tip="Weighted sum: Σ xᵢwᵢ — all inputs multiplied by their weights and added together">
+        <circle cx="132" cy="100" r="20" fill="#1a2030" stroke="#e0e0e0" stroke-width="2"/>
+        <text x="132" y="106" text-anchor="middle" font-family="serif" font-size="16" fill="#e0e0e0">Σ</text>
+      </g>
+
+      <!-- Sigma / activation node -->
+      <g class="node" data-tip="Activation function σ (e.g. sigmoid, ReLU) — introduces nonlinearity">
+        <circle cx="191" cy="100" r="16" fill="#2a1010" stroke="#ef9a9a" stroke-width="2"/>
+        <text x="191" y="106" text-anchor="middle" font-family="Crimson Pro,serif" font-size="14" font-style="italic" fill="#ef9a9a">σ</text>
+      </g>
+
+      <!-- Output label -->
+      <text x="252" y="88" text-anchor="middle" font-family="Crimson Pro,serif" font-size="14" font-style="italic" fill="#a5d6a7">ŷ</text>
+    </svg>
+
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#4fc3f7"></div> x₀ (bias)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#ef5350"></div> x₁</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#66bb6a"></div> x₂</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#e0e0e0"></div> Σ sum</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#ef9a9a"></div> σ activation</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#a5d6a7"></div> ŷ output</div>
+    </div>
+  </div>
+
+  <!-- Right: Math -->
+  <div class="panel">
+    <div class="panel-label">Equivalent Formulations</div>
+    <div class="math-block">
+
+      <div class="eq expanded" title="Expanded form">
+        <div>
+          <span class="eq-label">Expanded</span>
+          <div class="math">
+            <span class="co">ŷ</span> = <span class="cs">σ</span>(<span class="cx">x₀</span><span class="cw">w₀</span> + 
+            <span style="font-size:1.2em">Σ</span><sub style="font-size:0.6em">i=1</sub><sup style="font-size:0.6em">m</sup>
+            <span class="cr">xᵢ</span><span class="cp">wᵢ</span>)
+          </div>
+        </div>
+      </div>
+
+      <div class="eq vector" title="Vector dot product form">
+        <div>
+          <span class="eq-label">Vector form</span>
+          <div class="math">
+            = <span class="cs">σ</span>(<span class="cw">w₀</span> + <span class="cr">x</span><sup>T</sup><span class="cp">w</span>)
+          </div>
+        </div>
+      </div>
+
+      <div class="eq compact" title="Compact form with augmented vector">
+        <div>
+          <span class="eq-label">Compact (bias absorbed)</span>
+          <div class="math">
+            = <span class="cs">σ</span>(<span class="cx">x̃</span><sup>T</sup><span class="cp">w</span>)
+          </div>
+        </div>
+      </div>
+
+      <div style="font-size:0.68rem; color:var(--dim); line-height:1.7; margin-top:4px; padding: 0 4px;">
+        The compact form prepends <span style="color:var(--x0)">1</span> to <span style="color:var(--cr)">x</span> 
+        and <span style="color:var(--w0)">w₀</span> to <span style="color:var(--cp)">w</span>, 
+        collapsing the bias into a single dot product <span style="color:var(--cx)">x̃</span><sup>T</sup><span style="color:var(--cp)">w</span>.
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="credit">Deep Understanding of Deep Learning · Mike Cohen · sincxpress.com</div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+  const tooltip = document.getElementById('tooltip');
+  let hide;
+
+  document.querySelectorAll('[data-tip]').forEach(el => {
+    el.addEventListener('mouseenter', e => {
+      clearTimeout(hide);
+      tooltip.textContent = el.dataset.tip;
+      tooltip.classList.add('show');
+    });
+    el.addEventListener('mousemove', e => {
+      tooltip.style.left = (e.clientX + 14) + 'px';
+      tooltip.style.top  = (e.clientY - 10) + 'px';
+    });
+    el.addEventListener('mouseleave', () => {
+      hide = setTimeout(() => tooltip.classList.remove('show'), 200);
+    });
+  });
+</script>
+</body>
+</html>
