@@ -1,0 +1,523 @@
+This slide covers the three most common **activation functions** used in neural networks.
+
+## Sigmoid
+$$\sigma(z) = \frac{1}{1 + e^{-z}}$$
+- Output range: **(0, 1)**
+- S-shaped curve, always positive
+- Good for **binary classification** output (interpret as probability)
+- Problem: **vanishing gradients** for very large/small inputs (curve flattens)
+
+## Hyperbolic Tangent (tanh)
+$$\tanh(z) = \frac{e^z - e^{-z}}{e^z + e^{-z}}$$
+- Output range: **(-1, 1)**
+- Also S-shaped but **zero-centered**
+- Generally preferred over sigmoid for hidden layers because zero-centering helps gradients flow better
+- Still suffers from vanishing gradients at extremes
+
+## ReLU (Rectified Linear Unit)
+$$\text{ReLU}(z) = \max(0, z)$$
+- Output range: **[0, ∞)**
+- Dead simple: negative inputs → 0, positive inputs → pass through unchanged
+- **Most widely used** in modern deep learning
+- Computationally cheap, no vanishing gradient for positive values
+- Problem: **dying ReLU** — neurons can get stuck outputting 0 permanently
+
+## Why do we need them at all?
+Without a nonlinear activation function, stacking multiple layers collapses into a single linear transformation — no matter how deep the network is. Activation functions are what give neural networks the power to learn complex, nonlinear patterns.
+Here are the major activation functions used in deep learning:
+
+## Classic / foundational
+1. **Step function** — binary 0 or 1, used in original perceptrons, not differentiable
+2. **Sigmoid** — output (0,1), used in output layer for binary classification
+3. **Tanh** — output (-1,1), zero-centered sigmoid
+4. **Linear / Identity** — no squashing, used for regression output layers
+
+## ReLU family (most popular in practice)
+5. **ReLU** — max(0,z), fast and simple
+6. **Leaky ReLU** — small negative slope (e.g. 0.01z) for negatives, fixes dying ReLU
+7. **Parametric ReLU (PReLU)** — like Leaky ReLU but the slope is **learned**
+8. **ELU** (Exponential Linear Unit) — smooth negative side, zero-centered
+9. **SELU** (Scaled ELU) — self-normalizing, good for deep networks
+10. **GELU** (Gaussian Error Linear Unit) — used in **transformers/BERT/GPT**
+
+## Newer / specialized
+11. **Swish** — z · sigmoid(z), smooth, used in Google's models
+12. **Mish** — z · tanh(softplus(z)), smoother than Swish
+13. **Softmax** — converts vector to probabilities summing to 1, used for **multi-class output**
+14. **Softplus** — smooth approximation of ReLU
+15. **Hard sigmoid / Hard Swish** — computationally cheap approximations for mobile models
+
+## Quick rule of thumb
+| Layer | Recommended |
+|-------|------------|
+| Hidden layers | ReLU or GELU |
+| Binary output | Sigmoid |
+| Multi-class output | Softmax |
+| Regression output | Linear |
+
+Would you like a diagram showing all their curves?
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Activation Functions</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;1,300&family=Playfair+Display:ital,wght@0,400;1,400&display=swap');
+
+  :root {
+    --bg: #f7f4ef;
+    --card: #ffffff;
+    --border: #e2ddd6;
+    --text: #1a1714;
+    --dim: #8a8078;
+    --accent: #c0392b;
+    --curve: #2c3e50;
+    --grid: #ede9e3;
+    --tag-bg: #f0ece5;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    padding: 32px 20px 48px;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 40px;
+    opacity: 0;
+    animation: rise 0.7s ease forwards;
+  }
+
+  header h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.8rem, 5vw, 2.8rem);
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+
+  header h1 em {
+    font-style: italic;
+    color: var(--accent);
+  }
+
+  header p {
+    font-size: 0.72rem;
+    color: var(--dim);
+    margin-top: 8px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 32px;
+    opacity: 0;
+    animation: rise 0.7s ease forwards 0.15s;
+  }
+
+  .filter-btn {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--dim);
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+
+  .filter-btn:hover, .filter-btn.active {
+    background: var(--text);
+    color: var(--bg);
+    border-color: var(--text);
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 20px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 20px;
+    opacity: 0;
+    animation: rise 0.6s ease forwards;
+    transition: box-shadow 0.2s, transform 0.2s;
+    position: relative;
+  }
+
+  .card:hover {
+    box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+    transform: translateY(-2px);
+  }
+
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 4px;
+  }
+
+  .fn-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 1rem;
+    font-weight: 400;
+  }
+
+  .fn-range {
+    font-size: 0.6rem;
+    color: var(--dim);
+    background: var(--tag-bg);
+    padding: 2px 8px;
+    border-radius: 10px;
+    white-space: nowrap;
+  }
+
+  .fn-formula {
+    font-size: 0.68rem;
+    color: var(--dim);
+    font-style: italic;
+    margin-bottom: 12px;
+  }
+
+  canvas {
+    width: 100%;
+    height: 120px;
+    display: block;
+    border-radius: 2px;
+    background: var(--bg);
+  }
+
+  .fn-desc {
+    font-size: 0.63rem;
+    color: var(--dim);
+    margin-top: 10px;
+    line-height: 1.6;
+  }
+
+  .fn-use {
+    display: inline-block;
+    margin-top: 8px;
+    font-size: 0.58rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    border-bottom: 1px solid currentColor;
+  }
+
+  .category-label {
+    grid-column: 1 / -1;
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--dim);
+    padding: 4px 0;
+    border-bottom: 1px solid var(--border);
+    margin-top: 8px;
+  }
+
+  .hidden { display: none; }
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  footer {
+    text-align: center;
+    margin-top: 48px;
+    font-size: 0.6rem;
+    color: var(--dim);
+    letter-spacing: 0.1em;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Activation <em>Functions</em></h1>
+  <p>Deep Learning · Forward Propagation · σ reference</p>
+</header>
+
+<div class="filter-bar">
+  <button class="filter-btn active" data-filter="all">All</button>
+  <button class="filter-btn" data-filter="classic">Classic</button>
+  <button class="filter-btn" data-filter="relu">ReLU Family</button>
+  <button class="filter-btn" data-filter="modern">Modern</button>
+  <button class="filter-btn" data-filter="output">Output Layer</button>
+</div>
+
+<div class="grid" id="grid"></div>
+
+<footer>Deep Understanding of Deep Learning · MX Cohen · sincxpress.com</footer>
+
+<script>
+const fns = [
+  // Classic
+  {
+    name: "Step",
+    formula: "f(z) = 1 if z≥0 else 0",
+    range: "[0, 1]",
+    category: "classic",
+    use: "Original perceptron",
+    desc: "Binary threshold — not differentiable, so cannot be used with backprop. Historical significance only.",
+    color: "#7f8c8d",
+    fn: z => z >= 0 ? 1 : 0
+  },
+  {
+    name: "Sigmoid",
+    formula: "f(z) = 1 / (1 + e⁻ᶻ)",
+    range: "(0, 1)",
+    category: "classic",
+    use: "Binary classification output",
+    desc: "Classic S-curve. Outputs interpretable as probability. Suffers from vanishing gradients at extremes.",
+    color: "#2980b9",
+    fn: z => 1 / (1 + Math.exp(-z))
+  },
+  {
+    name: "Tanh",
+    formula: "f(z) = (eᶻ − e⁻ᶻ) / (eᶻ + e⁻ᶻ)",
+    range: "(-1, 1)",
+    category: "classic",
+    use: "Hidden layers (legacy)",
+    desc: "Zero-centered sigmoid. Better gradient flow than sigmoid. Still vanishes at extremes.",
+    color: "#8e44ad",
+    fn: z => Math.tanh(z)
+  },
+  {
+    name: "Linear",
+    formula: "f(z) = z",
+    range: "(-∞, ∞)",
+    category: "classic",
+    use: "Regression output",
+    desc: "No nonlinearity — used only in output layer for regression tasks. Stacking linear layers is still linear.",
+    color: "#95a5a6",
+    fn: z => z
+  },
+  // ReLU family
+  {
+    name: "ReLU",
+    formula: "f(z) = max(0, z)",
+    range: "[0, ∞)",
+    category: "relu",
+    use: "Default hidden layer choice",
+    desc: "Fast, simple, widely used. Can suffer from dying ReLU — neurons permanently output 0 if weights go negative.",
+    color: "#e67e22",
+    fn: z => Math.max(0, z)
+  },
+  {
+    name: "Leaky ReLU",
+    formula: "f(z) = z if z>0 else 0.01z",
+    range: "(-∞, ∞)",
+    category: "relu",
+    use: "Fix for dying ReLU",
+    desc: "Small negative slope (0.01) keeps neurons alive. Simple fix for the dying ReLU problem.",
+    color: "#d35400",
+    fn: z => z > 0 ? z : 0.01 * z
+  },
+  {
+    name: "PReLU",
+    formula: "f(z) = z if z>0 else αz",
+    range: "(-∞, ∞)",
+    category: "relu",
+    use: "When α should be learned",
+    desc: "Like Leaky ReLU but α is a learnable parameter. More flexible, slightly more computation.",
+    color: "#e74c3c",
+    fn: z => z > 0 ? z : 0.05 * z  // α=0.05 for display
+  },
+  {
+    name: "ELU",
+    formula: "f(z) = z if z>0 else α(eᶻ−1)",
+    range: "(-α, ∞)",
+    category: "relu",
+    use: "Smooth hidden layers",
+    desc: "Smooth negative side, zero-centered outputs. Better gradient flow than ReLU. Slower to compute.",
+    color: "#c0392b",
+    fn: z => z > 0 ? z : 1.0 * (Math.exp(z) - 1)
+  },
+  {
+    name: "SELU",
+    formula: "f(z) = λ·ELU(z, α)",
+    range: "(-λα, ∞)",
+    category: "relu",
+    use: "Self-normalizing deep nets",
+    desc: "Scaled ELU with specific λ and α constants. Keeps activations normalized automatically without BatchNorm.",
+    color: "#922b21",
+    fn: z => {
+      const alpha = 1.6733, scale = 1.0507;
+      return scale * (z > 0 ? z : alpha * (Math.exp(z) - 1));
+    }
+  },
+  // Modern
+  {
+    name: "GELU",
+    formula: "f(z) = z·Φ(z)",
+    range: "(-∞, ∞)",
+    category: "modern",
+    use: "Transformers (BERT, GPT)",
+    desc: "Gaussian Error Linear Unit. Smooth, probabilistic gating. Default in most modern transformer architectures.",
+    color: "#16a085",
+    fn: z => 0.5 * z * (1 + Math.tanh(Math.sqrt(2/Math.PI) * (z + 0.044715 * z**3)))
+  },
+  {
+    name: "Swish",
+    formula: "f(z) = z · sigmoid(z)",
+    range: "(-∞, ∞)",
+    category: "modern",
+    use: "Google's EfficientNet etc.",
+    desc: "Self-gated activation. Smooth, non-monotonic. Often outperforms ReLU on deeper networks.",
+    color: "#1abc9c",
+    fn: z => z / (1 + Math.exp(-z))
+  },
+  {
+    name: "Mish",
+    formula: "f(z) = z · tanh(softplus(z))",
+    range: "(-∞, ∞)",
+    category: "modern",
+    use: "Computer vision models",
+    desc: "Smooth, non-monotonic, unbounded above. Slightly better than Swish in some vision tasks.",
+    color: "#27ae60",
+    fn: z => z * Math.tanh(Math.log(1 + Math.exp(z)))
+  },
+  {
+    name: "Softplus",
+    formula: "f(z) = ln(1 + eᶻ)",
+    range: "(0, ∞)",
+    category: "modern",
+    use: "Smooth ReLU alternative",
+    desc: "Differentiable everywhere, smooth approximation to ReLU. Less commonly used in practice.",
+    color: "#2ecc71",
+    fn: z => Math.log(1 + Math.exp(z))
+  },
+  // Output
+  {
+    name: "Softmax",
+    formula: "f(zᵢ) = eᶻⁱ / Σeᶻʲ",
+    range: "(0,1) sum=1",
+    category: "output",
+    use: "Multi-class output",
+    desc: "Converts a vector of scores into a probability distribution. Always used in multi-class classification output.",
+    color: "#f39c12",
+    fn: z => 1 / (1 + Math.exp(-z))  // approximated as sigmoid for single-input display
+  },
+  {
+    name: "Hard Sigmoid",
+    formula: "f(z) = clip((z+1)/2, 0, 1)",
+    range: "[0, 1]",
+    category: "output",
+    use: "Mobile / low-power models",
+    desc: "Piecewise linear approximation of sigmoid. Faster to compute, used in mobile and edge deployments.",
+    color: "#f1c40f",
+    fn: z => Math.min(1, Math.max(0, (z + 2) / 4))
+  },
+];
+
+function drawCurve(canvas, fn, color) {
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.offsetWidth, h = canvas.offsetHeight;
+  canvas.width = w * dpr;
+  canvas.height = h * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const xMin = -4, xMax = 4;
+  const yMin = -1.5, yMax = 1.5;
+
+  const toX = v => ((v - xMin) / (xMax - xMin)) * w;
+  const toY = v => h - ((v - yMin) / (yMax - yMin)) * h;
+
+  // Grid
+  ctx.strokeStyle = '#ede9e3';
+  ctx.lineWidth = 1;
+  [-1, 0, 1].forEach(v => {
+    ctx.beginPath(); ctx.moveTo(0, toY(v)); ctx.lineTo(w, toY(v)); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(toX(v*2), 0); ctx.lineTo(toX(v*2), h); ctx.stroke();
+  });
+
+  // Axes
+  ctx.strokeStyle = '#c8c2ba';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, toY(0)); ctx.lineTo(w, toY(0)); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(toX(0), 0); ctx.lineTo(toX(0), h); ctx.stroke();
+
+  // Curve
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2.5;
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  let first = true;
+  for (let px = 0; px < w; px++) {
+    const z = xMin + (px / w) * (xMax - xMin);
+    let y = fn(z);
+    y = Math.max(yMin, Math.min(yMax, y));
+    const py = toY(y);
+    if (first) { ctx.moveTo(px, py); first = false; }
+    else ctx.lineTo(px, py);
+  }
+  ctx.stroke();
+}
+
+function buildCards(filter) {
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+
+  const filtered = filter === 'all' ? fns : fns.filter(f => f.category === filter);
+
+  filtered.forEach((f, i) => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.style.animationDelay = (i * 0.04) + 's';
+    card.innerHTML = `
+      <div class="card-header">
+        <div class="fn-name">${f.name}</div>
+        <div class="fn-range">${f.range}</div>
+      </div>
+      <div class="fn-formula">${f.formula}</div>
+      <canvas id="c${i}"></canvas>
+      <div class="fn-desc">${f.desc}</div>
+      <span class="fn-use">${f.use}</span>
+    `;
+    grid.appendChild(card);
+
+    requestAnimationFrame(() => {
+      const canvas = document.getElementById('c' + i);
+      if (canvas) drawCurve(canvas, f.fn, f.color);
+    });
+  });
+}
+
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    buildCards(btn.dataset.filter);
+  });
+});
+
+buildCards('all');
+
+window.addEventListener('resize', () => {
+  const active = document.querySelector('.filter-btn.active');
+  buildCards(active ? active.dataset.filter : 'all');
+});
+</script>
+</body>
+</html>
