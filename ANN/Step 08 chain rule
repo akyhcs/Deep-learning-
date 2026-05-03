@@ -1,0 +1,30 @@
+These two slides cover **backpropagation and the chain rule** — how the network learns by flowing error backwards.
+
+## What's happening
+
+The neuron computes ŷ = σ(xᵀw), and the weight update rule is:
+
+$$\mathbf{w} \leftarrow \mathbf{w} - \eta \frac{\partial \mathcal{L}}{\partial \mathbf{w}}$$
+
+The problem is: how do we compute ∂ℒ/∂w? The loss depends on ŷ, which depends on w through σ. So we need the **chain rule**.
+
+## The Chain Rule Derivation
+
+**Step 1** — Rewrite the gradient:
+$$\frac{\partial \mathcal{L}(\hat{y}, y)}{\partial \mathbf{w}} = \frac{\partial \mathcal{L}(\sigma(\mathbf{x}^T\mathbf{w}), y)}{\partial \mathbf{w}}$$
+
+**Step 2** — Define an intermediate variable u to simplify:
+$$u = \sigma(\mathbf{x}^T\mathbf{w}) - y$$
+
+**Step 3** — Apply chain rule:
+$$\frac{\partial \mathcal{L}}{\partial \mathbf{w}} = \frac{\partial \mathcal{L}}{\partial u} \cdot \frac{\partial u}{\partial \mathbf{w}}$$
+
+**Step 4** — Expand fully:
+$$= \frac{\partial \mathcal{L}(u)}{\partial u} \cdot \frac{\partial(\sigma(\mathbf{x}^T\mathbf{w}) - y)}{\partial \mathbf{w}}$$
+
+## Key insight
+Rather than computing one giant derivative, the chain rule **breaks it into small pieces** — each layer just needs to know its local gradient, then multiply them together. This is exactly what backpropagation does layer by layer.
+
+The note in image 2 reminds us 𝒥 can replace ℒ here — in practice you minimize cost (average over all samples) not just loss for one sample.
+
+Want a UI for this too?
