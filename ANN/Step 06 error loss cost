@@ -56,3 +56,571 @@ The goal is to find the **set of weights W** that minimizes the cost. The model 
 
 ## The full hierarchy
 **Error** (one prediction) → **Loss** (one sample) → **Cost** (whole dataset) → **Minimize via backprop**
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ANN — The Math</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@300;400&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-chtml.min.js"></script>
+<style>
+  :root {
+    --bg: #0b0e17;
+    --surface: #111520;
+    --border: #1d2438;
+    --text: #e8edf8;
+    --dim: #4a5578;
+    --cyan: #4fc3f7;
+    --orange: #ffb74d;
+    --red: #ef5350;
+    --green: #66bb6a;
+    --pink: #f48fb1;
+    --purple: #ce93d8;
+    --gold: #ffd54f;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    min-height: 100vh;
+    padding: 40px 20px 60px;
+    background-image: radial-gradient(ellipse at 20% 10%, rgba(79,195,247,0.04) 0%, transparent 50%),
+                      radial-gradient(ellipse at 80% 80%, rgba(206,147,216,0.04) 0%, transparent 50%);
+  }
+
+  /* Header */
+  .hero {
+    text-align: center;
+    margin-bottom: 56px;
+    opacity: 0;
+    animation: fadeUp 0.8s ease forwards 0.1s;
+  }
+
+  .hero-sub {
+    font-size: 0.62rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--dim);
+    margin-bottom: 12px;
+  }
+
+  .hero h1 {
+    font-family: 'Libre Baskerville', serif;
+    font-size: clamp(1.6rem, 5vw, 2.6rem);
+    font-weight: 400;
+    line-height: 1.2;
+    color: var(--text);
+  }
+
+  .hero h1 em {
+    font-style: italic;
+    color: var(--cyan);
+  }
+
+  .hero-line {
+    width: 60px;
+    height: 1px;
+    background: var(--border);
+    margin: 20px auto 0;
+  }
+
+  /* Pipeline bar */
+  .pipeline {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0;
+    margin-bottom: 52px;
+    opacity: 0;
+    animation: fadeUp 0.8s ease forwards 0.25s;
+  }
+
+  .pipe-step {
+    font-size: 0.6rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 6px 14px;
+    border: 1px solid var(--border);
+    color: var(--dim);
+    white-space: nowrap;
+    transition: all 0.2s;
+    cursor: default;
+  }
+
+  .pipe-step:hover { color: var(--text); border-color: var(--cyan); }
+  .pipe-arrow { color: var(--dim); font-size: 0.7rem; padding: 0 2px; }
+
+  /* Sections */
+  .section {
+    max-width: 860px;
+    margin: 0 auto 32px;
+    opacity: 0;
+    animation: fadeUp 0.7s ease forwards;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 16px;
+  }
+
+  .step-num {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.65rem;
+    font-weight: 400;
+    flex-shrink: 0;
+    border: 1px solid;
+  }
+
+  .section-title {
+    font-family: 'Libre Baskerville', serif;
+    font-size: 1.1rem;
+    font-weight: 400;
+  }
+
+  .section-tag {
+    margin-left: auto;
+    font-size: 0.55rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 3px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    color: var(--dim);
+  }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 24px 28px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+  }
+
+  .card-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  @media (max-width: 580px) {
+    .card-grid { grid-template-columns: 1fr; }
+  }
+
+  .formula-block {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 18px 20px;
+    text-align: center;
+  }
+
+  .formula-label {
+    font-size: 0.58rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--dim);
+    margin-bottom: 12px;
+  }
+
+  .formula-note {
+    font-size: 0.62rem;
+    color: var(--dim);
+    margin-top: 10px;
+    line-height: 1.6;
+    text-align: left;
+  }
+
+  .note-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 6px;
+  }
+
+  .note-dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 5px;
+  }
+
+  .inline-tag {
+    display: inline-block;
+    font-size: 0.55rem;
+    padding: 1px 7px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    vertical-align: middle;
+    margin-left: 4px;
+  }
+
+  /* MathJax overrides */
+  mjx-container {
+    font-size: 1.05em !important;
+  }
+
+  /* Colors per section */
+  .s1 .card::before { background: var(--cyan); }
+  .s1 .step-num { color: var(--cyan); border-color: var(--cyan); }
+  .s1 .section-title { color: var(--cyan); }
+
+  .s2 .card::before { background: var(--purple); }
+  .s2 .step-num { color: var(--purple); border-color: var(--purple); }
+  .s2 .section-title { color: var(--purple); }
+
+  .s3 .card::before { background: var(--orange); }
+  .s3 .step-num { color: var(--orange); border-color: var(--orange); }
+  .s3 .section-title { color: var(--orange); }
+
+  .s4 .card::before { background: var(--red); }
+  .s4 .step-num { color: var(--red); border-color: var(--red); }
+  .s4 .section-title { color: var(--red); }
+
+  .s5 .card::before { background: var(--green); }
+  .s5 .step-num { color: var(--green); border-color: var(--green); }
+  .s5 .section-title { color: var(--green); }
+
+  .s6 .card::before { background: var(--gold); }
+  .s6 .step-num { color: var(--gold); border-color: var(--gold); }
+  .s6 .section-title { color: var(--gold); }
+
+  /* Error table */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.72rem;
+    margin-top: 4px;
+  }
+  th {
+    padding: 8px 12px;
+    text-align: center;
+    font-weight: 400;
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--dim);
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: 8px 12px;
+    text-align: center;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  tr:last-child td { border-bottom: none; }
+  .err-neg { color: var(--red); }
+  .err-pos { color: var(--cyan); }
+  .bin-wrong { color: var(--orange); }
+  .bin-right { color: var(--dim); }
+
+  /* Comparison row */
+  .compare-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  @media(max-width:520px){ .compare-row{grid-template-columns:1fr;} }
+
+  .compare-card {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px;
+  }
+
+  .compare-title {
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .compare-eg {
+    font-size: 0.6rem;
+    color: var(--dim);
+    margin-top: 6px;
+    font-style: italic;
+  }
+
+  /* Batch callout */
+  .callout {
+    background: rgba(255,213,79,0.05);
+    border: 1px solid rgba(255,213,79,0.2);
+    border-radius: 4px;
+    padding: 14px 18px;
+    margin-top: 14px;
+    font-size: 0.68rem;
+    color: var(--gold);
+    line-height: 1.7;
+  }
+
+  /* Footer pipeline summary */
+  .summary-bar {
+    max-width: 860px;
+    margin: 40px auto 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 20px 28px;
+    text-align: center;
+    opacity: 0;
+    animation: fadeUp 0.7s ease forwards 1s;
+  }
+
+  .summary-label {
+    font-size: 0.55rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--dim);
+    margin-bottom: 12px;
+  }
+
+  .summary-flow {
+    font-size: 0.7rem;
+    color: var(--dim);
+    line-height: 2;
+  }
+
+  .summary-flow span { color: var(--text); }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .credit {
+    text-align: center;
+    margin-top: 32px;
+    font-size: 0.55rem;
+    color: var(--dim);
+    letter-spacing: 0.12em;
+    opacity: 0;
+    animation: fadeUp 0.7s ease forwards 1.1s;
+  }
+</style>
+</head>
+<body>
+
+<!-- Hero -->
+<div class="hero">
+  <div class="hero-sub">Lecture 42–43 · ANN Math Part 1 &amp; 2</div>
+  <h1>Forward Propagation,<br><em>Errors, Loss &amp; Cost</em></h1>
+  <div class="hero-line"></div>
+</div>
+
+<!-- Pipeline -->
+<div class="pipeline">
+  <div class="pipe-step">Inputs</div>
+  <div class="pipe-arrow">→</div>
+  <div class="pipe-step">Weighted Sum</div>
+  <div class="pipe-arrow">→</div>
+  <div class="pipe-step">Activation</div>
+  <div class="pipe-arrow">→</div>
+  <div class="pipe-step">Prediction ŷ</div>
+  <div class="pipe-arrow">→</div>
+  <div class="pipe-step">Loss</div>
+  <div class="pipe-arrow">→</div>
+  <div class="pipe-step">Cost</div>
+  <div class="pipe-arrow">→</div>
+  <div class="pipe-step">Optimize W</div>
+</div>
+
+
+<!-- S1: Neuron -->
+<div class="section s1" style="animation-delay:0.3s">
+  <div class="section-header">
+    <div class="step-num">1</div>
+    <div class="section-title">The Neuron — Forward Pass</div>
+    <div class="section-tag">Forward Prop</div>
+  </div>
+  <div class="card">
+    <div class="card-grid">
+      <div class="formula-block">
+        <div class="formula-label">Expanded form</div>
+        \[ \hat{y} = \sigma\!\left(x_0 w_0 + \sum_{i=1}^{m} x_i w_i\right) \]
+        <div class="formula-note">
+          <div class="note-row"><div class="note-dot" style="background:var(--cyan)"></div><div>x₀ = 1 always (bias trick)</div></div>
+          <div class="note-row"><div class="note-dot" style="background:var(--orange)"></div><div>w₀ = bias weight</div></div>
+        </div>
+      </div>
+      <div>
+        <div class="formula-block" style="margin-bottom:12px">
+          <div class="formula-label">Vector form</div>
+          \[ \hat{y} = \sigma(w_0 + \mathbf{x}^T\mathbf{w}) \]
+        </div>
+        <div class="formula-block">
+          <div class="formula-label">Compact — bias absorbed</div>
+          \[ \hat{y} = \sigma(\tilde{\mathbf{x}}^T\mathbf{w}) \]
+          <div class="formula-note" style="text-align:center">Prepend 1 to x, w₀ to w → single dot product</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- S2: Activation -->
+<div class="section s2" style="animation-delay:0.4s">
+  <div class="section-header">
+    <div class="step-num">2</div>
+    <div class="section-title">Activation Function σ</div>
+    <div class="section-tag">Nonlinearity</div>
+  </div>
+  <div class="card">
+    <div class="card-grid">
+      <div class="formula-block">
+        <div class="formula-label">Sigmoid</div>
+        \[ \sigma(z) = \frac{1}{1+e^{-z}} \]
+        <div class="formula-note" style="text-align:center">Range (0,1) · binary output</div>
+      </div>
+      <div class="formula-block">
+        <div class="formula-label">Tanh</div>
+        \[ \tanh(z) = \frac{e^z - e^{-z}}{e^z + e^{-z}} \]
+        <div class="formula-note" style="text-align:center">Range (−1,1) · zero-centered</div>
+      </div>
+      <div class="formula-block">
+        <div class="formula-label">ReLU</div>
+        \[ f(z) = \max(0,\, z) \]
+        <div class="formula-note" style="text-align:center">Range [0,∞) · default hidden layer</div>
+      </div>
+      <div class="formula-block">
+        <div class="formula-label">Softmax (multi-class output)</div>
+        \[ f(z_i) = \frac{e^{z_i}}{\sum_j e^{z_j}} \]
+        <div class="formula-note" style="text-align:center">Outputs sum to 1 · probability dist.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- S3: Error -->
+<div class="section s3" style="animation-delay:0.5s">
+  <div class="section-header">
+    <div class="step-num">3</div>
+    <div class="section-title">Error — One Prediction</div>
+    <div class="section-tag">Per Prediction</div>
+  </div>
+  <div class="card">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
+      <div>
+        <div class="formula-block" style="margin-bottom:12px">
+          <div class="formula-label">Continuous error</div>
+          \[ e = \hat{y} - y \]
+          <div class="formula-note" style="text-align:center">Signed — can cancel out. More sensitive.</div>
+        </div>
+        <div class="formula-block">
+          <div class="formula-label">Binarized error</div>
+          \[ e_{bin} = \mathbb{1}[\hat{y} \neq y] \]
+          <div class="formula-note" style="text-align:center">Easy to interpret. Loses magnitude.</div>
+        </div>
+      </div>
+      <div>
+        <div class="formula-label" style="margin-bottom:8px;font-size:0.58rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--dim)">Example table</div>
+        <table>
+          <tr><th>Sample</th><th>ŷ</th><th>y</th><th style="color:var(--orange)">error</th><th style="color:var(--red)">bin.err</th></tr>
+          <tr><td>X₁</td><td>.9</td><td>1</td><td class="err-neg">−.1</td><td class="bin-right">0</td></tr>
+          <tr><td>X₂</td><td>.2</td><td>0</td><td class="err-pos">+.2</td><td class="bin-right">0</td></tr>
+          <tr><td>X₃</td><td>.1</td><td>1</td><td class="err-neg">−.9</td><td class="bin-wrong">1</td></tr>
+          <tr><td>X₄</td><td>.51</td><td>0</td><td class="err-pos">+.51</td><td class="bin-wrong">1</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- S4: Loss -->
+<div class="section s4" style="animation-delay:0.6s">
+  <div class="section-header">
+    <div class="step-num">4</div>
+    <div class="section-title">Loss Function ℒ — One Sample</div>
+    <div class="section-tag">Per Sample</div>
+  </div>
+  <div class="card">
+    <div class="compare-row">
+      <div class="compare-card">
+        <div class="compare-title" style="color:var(--cyan)">Mean Squared Error (MSE)</div>
+        \[ \mathcal{L} = \frac{1}{2}(\hat{y} - y)^2 \]
+        <div class="compare-eg">Use when: continuous numerical output<br>e.g. height, price, temperature</div>
+      </div>
+      <div class="compare-card">
+        <div class="compare-title" style="color:var(--pink)">Cross-Entropy (Logistic)</div>
+        \[ \mathcal{L} = -\bigl(y\log\hat{y} + (1-y)\log(1-\hat{y})\bigr) \]
+        <div class="compare-eg">Use when: probability / categorical output<br>e.g. disease detection, sentiment</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- S5: Cost -->
+<div class="section s5" style="animation-delay:0.7s">
+  <div class="section-header">
+    <div class="step-num">5</div>
+    <div class="section-title">Cost Function 𝒥 — All Samples</div>
+    <div class="section-tag">Full Dataset</div>
+  </div>
+  <div class="card">
+    <div class="formula-block" style="max-width:400px;margin:0 auto">
+      <div class="formula-label">Average loss over n samples</div>
+      \[ \mathcal{J} = \frac{1}{n}\sum_{i=1}^{n} \mathcal{L}(\hat{y}_i,\, y_i) \]
+    </div>
+    <div class="formula-note" style="margin-top:16px;max-width:500px;margin-left:auto;margin-right:auto;text-align:center;line-height:1.8">
+      Loss = error for <em>one</em> sample &nbsp;·&nbsp; Cost = average loss over <em>all</em> samples<br>
+      This single number is what training minimizes.
+    </div>
+  </div>
+</div>
+
+<!-- S6: Optimization -->
+<div class="section s6" style="animation-delay:0.8s">
+  <div class="section-header">
+    <div class="step-num">6</div>
+    <div class="section-title">The Optimization Goal</div>
+    <div class="section-tag">Training</div>
+  </div>
+  <div class="card">
+    <div class="card-grid">
+      <div class="formula-block">
+        <div class="formula-label">Goal</div>
+        \[ \mathbf{W} = \underset{\mathbf{W}}{\arg\min}\ \mathcal{J} \]
+        <div class="formula-note" style="text-align:center">Find weights that minimize cost</div>
+      </div>
+      <div class="formula-block">
+        <div class="formula-label">Expanded — W is explicit</div>
+        \[ \mathbf{W} = \underset{\mathbf{W}}{\arg\min}\ \frac{1}{n}\sum_{i=1}^{n}\mathcal{L}(f(x,\mathbf{W})_i,\, y_i) \]
+      </div>
+    </div>
+    <div class="callout">
+      ⚡ Why mini-batches? &nbsp;·&nbsp; Per-sample training → slow + overfitting &nbsp;·&nbsp; Full-dataset training → loses sensitivity &nbsp;·&nbsp; Mini-batches = best of both worlds
+    </div>
+  </div>
+</div>
+
+<!-- Summary -->
+<div class="summary-bar">
+  <div class="summary-label">The complete pipeline</div>
+  <div class="summary-flow">
+    <span>Inputs xᵢ</span> → weighted sum <span>Σ xᵢwᵢ</span> → activation <span>σ</span> → prediction <span>ŷ</span>
+    → loss <span>ℒ(ŷ,y)</span> → cost <span>𝒥</span> → minimize via backprop → update <span>W</span> → repeat
+  </div>
+</div>
+
+<div class="credit">Deep Understanding of Deep Learning · MX Cohen · sincxpress.com</div>
+
+</body>
+</html>
